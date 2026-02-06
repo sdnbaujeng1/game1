@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G-IPA: Petualangan Energi</title>
+    <style>
+        :root {
+            --p1-color: #3b82f6;
+            --p1-bg: #eff6ff;
+            --p2-color: #ef4444;
+            --p2-bg: #fef2f2;
+            --bg-dark: #1e293b;
+            --text-main: #334155;
+            --gold: #f59e0b;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-dark); }
+
+        /* SVG Definitions */
+        .hidden-asset { display: none; }
+
+        /* SCREENS */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.5s;
+        }
+
+        .hidden { display: none !important; }
+
+        /* INTRO SCREEN */
+        #intro-screen {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: white;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .game-title { font-size: 3rem; text-shadow: 0 4px 0 #000; margin-bottom: 20px; text-align: center; }
+        .game-subtitle { font-size: 1.5rem; color: #a5b4fc; margin-bottom: 40px; }
+
+        .login-container {
+            display: flex;
+            gap: 40px;
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .player-input { text-align: center; }
+        .player-input input {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            border: none;
+            width: 200px;
+            text-align: center;
+        }
+
+        .btn-start {
+            margin-top: 30px;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            background: var(--gold);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #b45309;
+            transition: transform 0.1s;
+        }
+        .btn-start:active { transform: translateY(4px); box-shadow: none; }
+
+        /* GAME SCREEN - SPLIT LAYOUT */
+        #game-screen {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .split-pane {
+            flex: 1;
+            height: 100%;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            border-right: 4px solid #000;
+            position: relative;
+        }
+
+        #p1-panel { background-color: var(--p1-bg); border-right: 2px solid #333; }
+        #p2-panel { background-color: var(--p2-bg); border-left: 2px solid #333; }
+
+        /* HUD */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        .player-info { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.2rem; }
+        .score-box { background: #333; color: var(--gold); padding: 5px 15px; border-radius: 8px; font-family: monospace; font-size: 1.5rem; }
+
+        /* BATTLE ARENA */
+        .arena {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 20px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            background-size: cover;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #p1-panel .arena { background: linear-gradient(to bottom, #93c5fd, #60a5fa); }
+        #p2-panel .arena { background: linear-gradient(to bottom, #fca5a5, #f87171); }
+
+        .sprite { width: 100px; height: 100px; transition: transform 0.2s; }
+        .hero-sprite { filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3)); }
+        .monster-sprite { width: 120px; height: 120px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3)); }
+
+        /* HP BARS */
+        .hp-container {
+            position: absolute;
+            width: 100px;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            top: -20px;
+            left: 0;
+        }
+        .hp-fill { height: 100%; background: #22c55e; border-radius: 5px; transition: width 0.3s; }
+        .monster-wrapper { position: relative; }
+
+        /* QUESTION CARD */
+        .question-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+            height: 40%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timer-bar { height: 6px; background: #ddd; width: 100%; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+        .timer-fill { height: 100%; background: var(--gold); width: 100%; transition: width 1s linear; }
+
+        .question-text { font-size: 1.1rem; margin-bottom: 15px; font-weight: 600; color: var(--text-main); flex-grow: 1; }
+
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .option-btn {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .option-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .option-btn:active { transform: scale(0.98); }
+
+        /* FEEDBACK OVERLAY */
+        .feedback {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            background: rgba(0,0,0,0.4);
+            z-index: 5;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .feedback.correct { color: #4ade80; text-shadow: 0 2px 0 #000; }
+        .feedback.wrong { color: #ef4444; text-shadow: 0 2px 0 #000; }
+
+        /* MODAL */
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+            position: relative;
+            border: 4px solid var(--gold);
+        }
+
+        .modal-title { font-size: 2.5rem; color: var(--text-main); margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .player-stat { background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; }
+        .star-rating { color: var(--gold); font-size: 2rem; margin: 10px 0; }
+        
+        .action-buttons { display: flex; justify-content: center; gap: 20px; }
+        .btn-action { padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none; font-weight: bold; font-size: 1rem; }
+        .btn-xls { background: #10b981; color: white; }
+        .btn-reset { background: #64748b; color: white; }
+
+        /* ANIMATIONS */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        .shake { animation: shake 0.4s; }
+
+        @keyframes attack {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(50px) rotate(20deg); }
+            100% { transform: translateX(0); }
+        }
+        .attacking { animation: attack 0.3s; }
+
+        /* CONFETTI */
+        .confetti {
+            position: absolute; width: 10px; height: 10px; background-color: #f00;
+            animation: fall linear forwards;
+        }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
+
+    </style>
+</head>
+<body>
+
+    <svg class="hidden-asset">
+        <defs>
+            <symbol id="icon-hero" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" fill="#333"/>
+                <path d="M12 14c-5 0-8 4-8 9h16c0-5-3-9-8-9z" fill="#555"/>
+                <path d="M12 2l-3 3h6z" fill="gold"/>
+            </symbol>
+            <symbol id="icon-monster" viewBox="0 0 24 24">
+                <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" fill="#4a0404"/>
+                <path d="M8 10h2v2H8zm6 0h2v2h-2z" fill="#fff"/>
+                <path d="M8 16h8v2H8z" fill="#ff0000"/>
+                <path d="M2 2l4 4M22 2l-4 4" stroke="#4a0404" stroke-width="2"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <div id="intro-screen" class="screen">
+        <h1 class="game-title">⚡ PETUALANGAN ENERGI ⚡</h1>
+        <h2 class="game-subtitle">IPA Kelas 5 - Energi & Perubahannya</h2>
+        
+        <div class="login-container">
+            <div class="player-input">
+                <label>Pahlawan 1</label>
+                <input type="text" id="p1-name" placeholder="Nama Pemain 1" value="Pemain 1">
+                <div style="color: var(--p1-color)">★ Tim Biru ★</div>
+            </div>
+            <div class="player-input">
+                <label>Pahlawan 2</label>
+                <input type="text" id="p2-name" placeholder="Nama Pemain 2" value="Pemain 2">
+                <div style="color: var(--p2-color)">★ Tim Merah ★</div>
+            </div>
+        </div>
+        
+        <button class="btn-start" onclick="startGame()">MULAI PETUALANGAN</button>
+    </div>
+
+    <div id="game-screen" class="screen hidden">
+        
+        <div id="p1-panel" class="split-pane">
+            <div class="hud">
+                <div class="player-info">
+                    <span id="p1-hud-name">P1</span>
+                </div>
+                <div class="score-box" id="p1-score">0</div>
+            </div>
+            
+            <div class="arena">
+                <div class="hero-wrapper">
+                    <div class="hp-container"><div id="p1-hp-bar" class="hp-fill"></div></div>
+                    <svg class="sprite hero-sprite" id="p1-hero"><use href="#icon-hero" style="fill: var(--p1-color);"></use></svg>
+                </div>
+                <div class="monster-wrapper">
+                    <div class="hp-container"><div id="p1-monster-hp" class="hp-fill"></div></div>
+                    <svg class="sprite monster-sprite" id="p1-monster"><use href="#icon-monster"></use></svg>
+                </div>
+                <div id="p1-feedback" class="feedback">TEPAT!</div>
+            </div>
+
+            <div class="question-card" id="p1-q-card">
+                <div class="timer-bar"><div id="p1-timer" class="timer-fill"></div></div>
+                <div id="p1-q-text" class="question-text">Loading...</div>
+                <div id="p1-options" class="options-grid"></div>
+            </div>
+            <div id="p1-wait" class="hidden" style="flex:1; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#666;">Menunggu lawan...</div>
+        </div>
+
+        <div id="p2-panel" class="split-pane">
+            <div class="hud">
+                <div class="player-info">
+                    <span id="p2-hud-name">P2</span>
+                </div>
+                <div class="score-box" id="p2-score">0</div>
+            </div>
+
+            <div class="arena">
+                <div class="hero-wrapper">
+                    <div class="hp-container"><div id="p2-hp-bar" class="hp-fill"></div></div>
+                    <svg class="sprite hero-sprite" id="p2-hero"><use href="#icon-hero" style="fill: var(--p2-color);"></use></svg>
+                </div>
+                <div class="monster-wrapper">
+                    <div class="hp-container"><div id="p2-monster-hp" class="hp-fill"></div></div>
+                    <svg class="sprite monster-sprite" id="p2-monster"><use href="#icon-monster"></use></svg>
+                </div>
+                <div id="p2-feedback" class="feedback">TEPAT!</div>
+            </div>
+
+            <div class="question-card" id="p2-q-card">
+                <div class="timer-bar"><div id="p2-timer" class="timer-fill"></div></div>
+                <div id="p2-q-text" class="question-text">Loading...</div>
+                <div id="p2-options" class="options-grid"></div>
+            </div>
+            <div id="p2-wait" class="hidden" style="flex:1; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#666;">Menunggu lawan...</div>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">🎉 PETUALANGAN SELESAI! 🎉</h2>
+            <div class="stats-grid">
+                <div class="player-stat" style="border-left: 5px solid var(--p1-color)">
+                    <h3 id="end-p1-name">P1</h3>
+                    <div id="end-p1-score" style="font-size:2rem; font-weight:bold;">100</div>
+                    <div id="end-p1-stars" class="star-rating">★★★</div>
+                </div>
+                <div class="player-stat" style="border-left: 5px solid var(--p2-color)">
+                    <h3 id="end-p2-name">P2</h3>
+                    <div id="end-p2-score" style="font-size:2rem; font-weight:bold;">80</div>
+                    <div id="end-p2-stars" class="star-rating">★★</div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-action btn-xls" onclick="exportToExcel()">📥 Unduh Nilai (Excel)</button>
+                <button class="btn-action btn-reset" onclick="location.reload()">Main Lagi</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & CONFIG ---
+        const QUESTION_BANK = [
+            { q: "Energi yang dimiliki oleh air terjun yang mengalir deras adalah...", options: ["Energi Kimia", "Energi Gerak", "Energi Panas", "Energi Listrik"], a: 1 },
+            { q: "Setrika mengubah energi listrik menjadi energi...", options: ["Gerak", "Cahaya", "Panas", "Bunyi"], a: 2 },
+            { q: "Makanan yang kita makan mengandung energi...", options: ["Kimia", "Listrik", "Otot", "Panas"], a: 0 },
+            { q: "Panel surya mengubah energi cahaya matahari menjadi...", options: ["Gerak", "Listrik", "Bunyi", "Kimia"], a: 1 },
+            { q: "Benda yang diam memiliki energi potensial, contohnya...", options: ["Mobil berjalan", "Buah di pohon", "Kipas berputar", "Air mengalir"], a: 1 },
+            { q: "Saat bermain gitar, energi gerak diubah menjadi...", options: ["Cahaya", "Panas", "Bunyi", "Kimia"], a: 2 },
+            { q: "Sumber energi terbesar di bumi adalah...", options: ["Baterai", "Matahari", "Angin", "Air"], a: 1 },
+            { q: "Kincir angin memanfaatkan energi...", options: ["Air", "Panas", "Angin", "Listrik"], a: 2 },
+            { q: "Pada baterai terjadi perubahan energi kimia menjadi...", options: ["Gerak", "Listrik", "Bunyi", "Pegas"], a: 1 },
+            { q: "Busur panah yang ditarik memiliki energi...", options: ["Potensial Pegas", "Listrik", "Panas", "Kimia"], a: 0 },
+            { q: "Televisi mengubah energi listrik menjadi...", options: ["Cahaya & Bunyi", "Gerak & Panas", "Kimia & Cahaya", "Panas & Bunyi"], a: 0 },
+            { q: "Contoh pemanfaatan energi alternatif adalah...", options: ["Bensin", "Batu Bara", "Biogas", "Minyak Tanah"], a: 2 }
+        ];
+
+        const MAX_HP = 100;
+        const MONSTER_HP = 100;
+        const TIMER_SECONDS = 10;
+        const DAMAGE_TO_HERO = 20;
+        const DAMAGE_TO_MONSTER = 20; // 5 hits to kill monster per "Level" conceptually, or just track score
+        const POINTS_PER_Q = 10;
+
+        // --- STATE MANAGEMENT ---
+        let players = [
+            { id: 0, name: "", score: 0, hp: MAX_HP, monsterHp: MONSTER_HP, qIndex: 0, qList: [], timer: null, timeLeft: TIMER_SECONDS, finished: false, history: [] },
+            { id: 1, name: "", score: 0, hp: MAX_HP, monsterHp: MONSTER_HP, qIndex: 0, qList: [], timer: null, timeLeft: TIMER_SECONDS, finished: false, history: [] }
+        ];
+
+        // --- CORE FUNCTIONS ---
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function startGame() {
+            const p1Name = document.getElementById('p1-name').value || "Pemain 1";
+            const p2Name = document.getElementById('p2-name').value || "Pemain 2";
+
+            players[0].name = p1Name;
+            players[1].name = p2Name;
+
+            // Setup independent question queues (randomized differently per player)
+            players[0].qList = shuffle([...QUESTION_BANK]).slice(0, 10);
+            players[1].qList = shuffle([...QUESTION_BANK]).slice(0, 10);
+
+            // Update UI
+            document.getElementById('p1-hud-name').textContent = p1Name;
+            document.getElementById('p2-hud-name').textContent = p2Name;
+
+            document.getElementById('intro-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            // Start Logic
+            loadQuestion(0);
+            loadQuestion(1);
+        }
+
+        function loadQuestion(pId) {
+            const p = players[pId];
+            const prefix = pId === 0 ? 'p1' : 'p2';
+
+            if (p.hp <= 0 || p.qIndex >= p.qList.length) {
+                endPlayerTurn(pId);
+                return;
+            }
+
+            const qData = p.qList[p.qIndex];
+            
+            // Reset Timer
+            p.timeLeft = TIMER_SECONDS;
+            updateTimerUI(pId);
+            clearInterval(p.timer);
+            p.timer = setInterval(() => {
+                p.timeLeft--;
+                updateTimerUI(pId);
+                if (p.timeLeft <= 0) {
+                    handleAnswer(pId, -1); // Time out treated as wrong
+                }
+            }, 1000);
+
+            // Render Text
+            document.getElementById(`${prefix}-q-text`).textContent = `${p.qIndex + 1}. ${qData.q}`;
+            
+            // Render Options
+            const optsContainer = document.getElementById(`${prefix}-options`);
+            optsContainer.innerHTML = '';
+            qData.options.forEach((opt, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'option-btn';
+                btn.textContent = opt;
+                btn.onclick = () => handleAnswer(pId, idx);
+                optsContainer.appendChild(btn);
+            });
+        }
+
+        function updateTimerUI(pId) {
+            const prefix = pId === 0 ? 'p1' : 'p2';
+            const pct = (players[pId].timeLeft / TIMER_SECONDS) * 100;
+            document.getElementById(`${prefix}-timer`).style.width = `${pct}%`;
+        }
+
+        function handleAnswer(pId, ansIdx) {
+            const p = players[pId];
+            clearInterval(p.timer); // Stop timer
+            const prefix = pId === 0 ? 'p1' : 'p2';
+            const currentQ = p.qList[p.qIndex];
+            const isCorrect = (ansIdx === currentQ.a);
+
+            // Visual Feedback
+            const feedbackEl = document.getElementById(`${prefix}-feedback`);
+            const heroEl = document.getElementById(`${prefix}-hero`);
+            const monsterEl = document.getElementById(`${prefix}-monster`);
+            const monsterHpBar = document.getElementById(`${prefix}-monster-hp`);
+            const heroHpBar = document.getElementById(`${prefix}-hp-bar`);
+
+            // Record History for Excel
+            p.history.push({
+                question: currentQ.q,
+                correct: isCorrect,
+                points: isCorrect ? POINTS_PER_Q : 0
+            });
+
+            feedbackEl.style.opacity = '1';
+            
+            if (isCorrect) {
+                // Correct Logic
+                feedbackEl.textContent = "KEREN!";
+                feedbackEl.className = "feedback correct";
+                p.score += POINTS_PER_Q;
+                
+                // Animation: Hero Attacks
+                heroEl.classList.add('attacking');
+                setTimeout(() => heroEl.classList.remove('attacking'), 300);
+                monsterEl.classList.add('shake');
+                setTimeout(() => monsterEl.classList.remove('shake'), 400);
+
+                // Reduce Monster HP visual (looping monster HP for endless feel or stage feel)
+                p.monsterHp -= DAMAGE_TO_MONSTER;
+                if(p.monsterHp < 0) p.monsterHp = 100; // Monster respawn logic
+                monsterHpBar.style.width = `${p.monsterHp}%`;
+
+            } else {
+                // Wrong Logic
+                feedbackEl.textContent = "ADUH!";
+                feedbackEl.className = "feedback wrong";
+                
+                // Animation: Monster Attacks
+                monsterEl.classList.add('attacking');
+                setTimeout(() => monsterEl.classList.remove('attacking'), 300);
+                heroEl.classList.add('shake');
+                setTimeout(() => heroEl.classList.remove('shake'), 400);
+
+                // Player Takes Damage
+                p.hp -= DAMAGE_TO_HERO;
+                heroHpBar.style.width = `${p.hp}%`;
+            }
+
+            // Update Score
+            document.getElementById(`${prefix}-score`).textContent = p.score;
+
+            // Hide Feedback & Next Question
+            setTimeout(() => {
+                feedbackEl.style.opacity = '0';
+                p.qIndex++;
+                loadQuestion(pId);
+            }, 1000);
+        }
+
+        function endPlayerTurn(pId) {
+            players[pId].finished = true;
+            clearInterval(players[pId].timer);
+            
+            const prefix = pId === 0 ? 'p1' : 'p2';
+            document.getElementById(`${prefix}-q-card`).style.display = 'none';
+            document.getElementById(`${prefix}-wait`).classList.remove('hidden');
+            document.getElementById(`${prefix}-wait`).textContent = "Selesai! Menunggu hasil...";
+
+            // Check if both finished
+            if (players[0].finished && players[1].finished) {
+                setTimeout(showWinModal, 1000);
+            }
+        }
+
+        function showWinModal() {
+            const modal = document.getElementById('modal-overlay');
+            modal.classList.remove('hidden');
+
+            // Populate Data
+            populateEndStats(0, 'p1');
+            populateEndStats(1, 'p2');
+
+            // Trigger Confetti
+            createConfetti();
+        }
+
+        function populateEndStats(pId, prefix) {
+            const p = players[pId];
+            document.getElementById(`end-${prefix}-name`).textContent = p.name;
+            document.getElementById(`end-${prefix}-score`).textContent = p.score;
+            
+            let stars = "★";
+            if (p.score > 40) stars = "★★";
+            if (p.score > 80) stars = "★★★";
+            document.getElementById(`end-${prefix}-stars`).textContent = stars;
+        }
+
+        // --- EXTRAS: EXCEL & CONFETTI ---
+
+        function createConfetti() {
+            const colors = ['#f00', '#0f0', '#00f', '#ff0', '#0ff', '#f0f'];
+            for (let i = 0; i < 50; i++) {
+                const conf = document.createElement('div');
+                conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                document.body.appendChild(conf);
+            }
+        }
+
+        function exportToExcel() {
+            // Build HTML Table string
+            let table = `
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th colspan="4" style="background:#f0f0f0; font-size:16px;">Laporan Nilai Game IPA: Energi</th>
+                        </tr>
+                        <tr>
+                            <th>Nama Siswa</th>
+                            <th>Skor Total</th>
+                            <th>Soal Terjawab</th>
+                            <th>Detail Jawaban (B/S)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            players.forEach(p => {
+                const detail = p.history.map((h, i) => `Q${i+1}: ${h.correct?'Benar':'Salah'}`).join(", ");
+                table += `
+                    <tr>
+                        <td>${p.name}</td>
+                        <td>${p.score}</td>
+                        <td>${p.qIndex} / 10</td>
+                        <td>${detail}</td>
+                    </tr>
+                `;
+            });
+
+            table += `</tbody></table>`;
+
+            // Trigger Download
+            const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Nilai_IPA_Energi_${new Date().toISOString().slice(0,10)}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+    </script>
+</body>
+</html>
